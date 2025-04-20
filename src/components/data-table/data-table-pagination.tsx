@@ -23,7 +23,7 @@ interface DataTablePaginationProps<TData> extends React.ComponentProps<'div'> {
 
 export function DataTablePagination<TData>({
     table,
-    pageSizeOptions = [10, 25, 50],
+    pageSizeOptions = [10, 25, 50, 100, 200],
     className,
     ...props
 }: DataTablePaginationProps<TData>) {

@@ -1,23 +1,25 @@
 import {
     AudioWaveform,
-    BookOpen,
-    Bot,
     Command,
     GalleryVerticalEnd,
-    Settings2,
-    SquareTerminal,
+    Home,
+    NotebookText,
+    ReceiptIndianRupee,
+    ScrollText,
+    Tag,
 } from 'lucide-react'
 
 import { NavMain } from '~/components/sidebar/nav-main'
-import { NavUser } from '~/components/sidebar/nav-user'
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
     SidebarRail,
 } from '~/components/ui/sidebar'
 import { auth } from '~/server/auth'
+import { SidebarFooterItems } from './sidebar-footer-items'
 
 // This is sample data.
 const data = {
@@ -47,29 +49,24 @@ const data = {
         {
             title: 'Invoices',
             url: '/invoices',
-            icon: SquareTerminal,
+            icon: ScrollText,
             isActive: true,
         },
         {
             title: 'Companies',
             url: '/companies',
-            icon: SquareTerminal,
+            icon: NotebookText,
             isActive: true,
-        },
-        {
-            title: 'Sales',
-            url: '/sales',
-            icon: Bot,
         },
         {
             title: 'Purchases',
             url: '/purchases',
-            icon: BookOpen,
+            icon: Tag,
         },
         {
             title: 'Payments',
             url: '/payments',
-            icon: Settings2,
+            icon: ReceiptIndianRupee,
         },
     ],
 }
@@ -86,16 +83,25 @@ export async function AppSidebar({
     }
     return (
         <Sidebar collapsible='icon' {...props}>
-            <SidebarHeader>Invoicing</SidebarHeader>
+            <SidebarMenu>
+                <SidebarMenuItem className='flex justify-center mt-2'>
+                    <SidebarMenuButton>
+                        <Home /> SLNP
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
             <SidebarContent>
                 <NavMain items={data.navMain} />
             </SidebarContent>
-            <SidebarFooter>
+            {/* <SidebarFooter className='flex justify-center items-center'>
+                <SidebarTrigger />
+                <ModeToggle />
                 <NavUser
                     user={session ? session.user : fakeUser}
                     isFake={!!!session}
                 />
-            </SidebarFooter>
+            </SidebarFooter> */}
+            <SidebarFooterItems session={session} fakeUser={fakeUser} />
             <SidebarRail />
         </Sidebar>
     )

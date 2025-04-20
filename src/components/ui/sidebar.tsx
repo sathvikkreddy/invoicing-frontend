@@ -3,7 +3,11 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { type VariantProps, cva } from 'class-variance-authority'
-import { PanelLeftIcon } from 'lucide-react'
+import {
+    ArrowLeftFromLine,
+    ArrowRightFromLine,
+    PanelLeftIcon,
+} from 'lucide-react'
 
 import { useIsMobile } from '~/hooks/use-mobile'
 import { cn } from '~/lib/utils'
@@ -54,7 +58,7 @@ function useSidebar() {
 }
 
 function SidebarProvider({
-    defaultOpen = true,
+    defaultOpen = false,
     open: openProp,
     onOpenChange: setOpenProp,
     className,
@@ -270,24 +274,35 @@ function SidebarTrigger({
     onClick,
     ...props
 }: React.ComponentProps<typeof Button>) {
-    const { toggleSidebar } = useSidebar()
+    const { toggleSidebar, open, state, isMobile } = useSidebar()
 
     return (
-        <Button
-            data-sidebar='trigger'
-            data-slot='sidebar-trigger'
-            variant='ghost'
-            size='icon'
-            className={cn('size-7', className)}
-            onClick={event => {
-                onClick?.(event)
-                toggleSidebar()
-            }}
-            {...props}
-        >
-            <PanelLeftIcon />
-            <span className='sr-only'>Toggle Sidebar</span>
-        </Button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button
+                    data-sidebar='trigger'
+                    data-slot='sidebar-trigger'
+                    variant='ghost'
+                    size='icon'
+                    className={cn('size-7', className)}
+                    onClick={event => {
+                        onClick?.(event)
+                        toggleSidebar()
+                    }}
+                    {...props}
+                >
+                    {open ? <ArrowLeftFromLine /> : <ArrowRightFromLine />}
+                    <span className='sr-only'>Toggle Sidebar</span>
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent
+                side='right'
+                align='center'
+                hidden={state !== 'collapsed' || isMobile}
+            >
+                {open ? 'Collapse' : 'Open'}
+            </TooltipContent>
+        </Tooltip>
     )
 }
 
@@ -360,7 +375,7 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<'div'>) {
         <div
             data-slot='sidebar-footer'
             data-sidebar='footer'
-            className={cn('flex flex-col gap-2 p-2', className)}
+            className={cn('p-2', className)}
             {...props}
         />
     )

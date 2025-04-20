@@ -8,7 +8,7 @@ import { auth } from '~/server/auth'
 import {
     type AddCompany,
     type Company,
-    type StrapiResponse,
+    type StrapiCollectionResponse,
 } from '~/types/strapi'
 
 export const getCompanies = async (props?: { queryString?: string }) => {
@@ -24,7 +24,7 @@ export const getCompanies = async (props?: { queryString?: string }) => {
                 }
             )
 
-            return response.data as StrapiResponse<Company>
+            return response.data as StrapiCollectionResponse<Company>
         } catch (error) {
             console.error('Error fetching companies:', error)
             return null
@@ -44,7 +44,7 @@ export const createCompany = async (companyData: AddCompany) => {
                     headers: { Authorization: `Bearer ${session.strapiToken}` },
                 }
             )
-
+            revalidatePath('/companies')
             return response.data.data as Company
         } catch (error) {
             console.error('Error creating company:', error)

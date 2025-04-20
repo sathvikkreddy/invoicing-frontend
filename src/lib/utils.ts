@@ -22,10 +22,9 @@ export type FilterOptions = {
     perPage?: string | number
 }
 
-// Function to build Strapi filter parameters
 export const buildStrapiFilters = (
     options: FilterOptions = {},
-    queryStrapiFields: string[]
+    searchStrapiFields: string[]
 ): string => {
     // Set default values
     const defaults = {
@@ -51,13 +50,20 @@ export const buildStrapiFilters = (
 
     // Search/filtering
     if (query && query.trim() !== '') {
-        for (let i = 0; i < queryStrapiFields.length; i++) {
-            params.append(
-                `filters[$or][${i}][${queryStrapiFields[i]}][$containsi]`,
-                query
-            )
+        for (let i = 0; i < searchStrapiFields.length; i++) {
+            const field = searchStrapiFields[i]
+
+            // Check if the field is nested (contains a dot)
+            if (field?.includes('.')) {
+                const [relation, attribute] = field.split('.')
+                params.append(
+                    `filters[$or][${i}][${relation}][${attribute}][$containsi]`,
+                    query
+                )
+            } else {
+                params.append(`filters[$or][${i}][${field}][$containsi]`, query)
+            }
         }
-        // Add additional fields to search as needed
     }
 
     // Sorting

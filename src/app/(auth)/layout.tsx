@@ -25,7 +25,7 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
         <SidebarProvider>
             <AppSidebar />
             <SidebarInset className='h-screen'>
-                <header className='bg-sidebar sticky top-0 z-40 flex h-16 shrink-0 opacity-100 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12'>
+                {/* <header className='bg-sidebar sticky top-0 flex h-16 shrink-0 opacity-100 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12'>
                     <div className='flex w-full justify-between px-4'>
                         <div className='flex items-center justify-start gap-2'>
                             <SidebarTrigger className='-ml-1' />
@@ -74,10 +74,9 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
                             </Breadcrumb>
                         </div>
                     </div>
-                </header>
-                <main className='z-30 h-full p-4'>{children}</main>
+                </header> */}
+                <main className='h-full p-4'>{children}</main>
             </SidebarInset>
-            <Toaster />
         </SidebarProvider>
     )
 }

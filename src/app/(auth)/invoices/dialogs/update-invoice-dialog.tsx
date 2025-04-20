@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { CalendarIcon, Loader2, Plus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -46,53 +46,62 @@ import {
 } from '~/components/ui/select'
 import { cn } from '~/lib/utils'
 import type { Company, Invoice, InvoiceItem } from '~/types/strapi'
-import { createInvoice } from '../actions'
+import { createInvoice, getNextInvoiceNumber, updateInvoice } from '../actions'
 import { toast } from 'sonner'
 import { type VariantProps } from 'class-variance-authority'
+import { getCompanies } from '../../companies/actions'
 
 // Units for dropdown
 const units = ['NOS', 'KGS']
 
-export function AddInvoiceDialog({
-    label,
-    className,
-    existingInvoice,
-    companies,
-    buttonProps,
-    asChild,
-}: {
-    label?: string
-    className?: string
-    existingInvoice?: Invoice
-    companies: Company[]
-    buttonProps?: React.ComponentProps<'button'> &
-        VariantProps<typeof buttonVariants> & {
-            asChild?: boolean
+interface UpdateInvoiceDialogProps {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    invoice: Invoice | null
+}
+
+export function UpdateInvoiceDialog({
+    invoice,
+    open = false,
+    onOpenChange = () => {
+        return
+    },
+}: UpdateInvoiceDialogProps) {
+    const [companies, setCompanies] = useState<Company[]>([])
+
+    useEffect(() => {
+        if (open) {
+            getCompanies()
+                .then(data => {
+                    setCompanies(data?.data ?? [])
+                })
+                .catch(error => {
+                    console.error('Error fetching companies:', error)
+                })
         }
-    asChild?: boolean
-}) {
-    const [open, setOpen] = useState(false)
-    const [isSubmitLoading, setIsSubmitLoading] = useState(false)
+    }, [open])
+
     // Initialize form with default values
-    const form = useForm<AddInvoice>({
+
+    const form = useForm<UpdateInvoice>({
         defaultValues: {
             invoice_number: '',
             date: format(new Date(), 'yyyy-MM-dd'),
-            purchase_order: existingInvoice?.purchase_order ?? '',
-            total_quantity: existingInvoice?.total_quantity ?? 0,
-            total_amount: existingInvoice?.total_amount ?? 0,
-            transport_amount: existingInvoice?.transport_amount ?? 0,
-            taxable_amount: existingInvoice?.taxable_amount ?? 0,
-            sgst_amount: existingInvoice?.sgst_amount ?? 0,
-            cgst_amount: existingInvoice?.cgst_amount ?? 0,
-            igst_amount: existingInvoice?.igst_amount ?? 0,
-            round_off_amount: existingInvoice?.round_off_amount ?? 0,
-            invoice_amount: existingInvoice?.invoice_amount ?? 0,
+            purchase_order: '',
+            total_quantity: 0,
+            total_amount: 0,
+            transport_amount: 0,
+            taxable_amount: 0,
+            sgst_amount: 0,
+            cgst_amount: 0,
+            igst_amount: 0,
+            round_off_amount: 0,
+            invoice_amount: 0,
             eway_bill_number: '',
-            vehicle_number: existingInvoice?.vehicle_number ?? '',
-            bill_to_company: existingInvoice?.bill_to_company.id ?? 0,
-            ship_to_company: existingInvoice?.ship_to_company.id ?? 0,
-            items: existingInvoice?.items ?? [
+            vehicle_number: '',
+            bill_to_company: '',
+            ship_to_company: '',
+            items: [
                 {
                     title: 'HDPE PP WOVEN SACKS',
                     hsn_code: '39239090',
@@ -107,14 +116,40 @@ export function AddInvoiceDialog({
             ],
         },
     })
-
-    const { control, handleSubmit } = form
+    const { control, handleSubmit, reset } = form
     const [billToCompany, setBillToCompany] = useState<Company | null>(
-        existingInvoice?.bill_to_company ?? null
+        invoice?.bill_to_company ?? null
     )
     const [shipToCompany, setShipToCompany] = useState<Company | null>(
-        existingInvoice?.ship_to_company ?? null
+        invoice?.ship_to_company ?? null
     )
+
+    useEffect(() => {
+        if (invoice) {
+            reset({
+                invoice_number: invoice.invoice_number.split('/')[2],
+                date: format(invoice.date, 'yyyy-MM-dd'),
+                purchase_order: invoice.purchase_order,
+                total_quantity: invoice.total_quantity,
+                total_amount: invoice.total_amount,
+                transport_amount: invoice.transport_amount,
+                taxable_amount: invoice.taxable_amount,
+                sgst_amount: invoice.sgst_amount,
+                cgst_amount: invoice.cgst_amount,
+                igst_amount: invoice.igst_amount,
+                round_off_amount: invoice.round_off_amount,
+                invoice_amount: invoice.invoice_amount,
+                eway_bill_number: '',
+                vehicle_number: invoice.vehicle_number,
+                bill_to_company: invoice.bill_to_company.documentId,
+                ship_to_company: invoice.ship_to_company.documentId,
+                items: invoice.items.map(({ id, ...rest }) => rest),
+            })
+            setBillToCompany(invoice.bill_to_company)
+            setShipToCompany(invoice.ship_to_company)
+        }
+    }, [invoice, reset])
+
     // Field array for invoice items
     const { fields, append, remove } = useFieldArray({
         control,
@@ -122,7 +157,7 @@ export function AddInvoiceDialog({
     })
 
     // Calculate totals when items change
-    const calculateTotals = (items: AddInvoiceItem[]) => {
+    const calculateTotals = (items: UpdateInvoiceItem[]) => {
         const totalQuantity = items.reduce(
             (sum, item) => sum + Number(item.quantity),
             0
@@ -175,7 +210,7 @@ export function AddInvoiceDialog({
     // Handle item changes
     const handleItemChange = (
         index: number,
-        field: keyof AddInvoiceItem,
+        field: keyof UpdateInvoiceItem,
         value: any
     ) => {
         const items = form.getValues('items')
@@ -198,39 +233,37 @@ export function AddInvoiceDialog({
         setTimeout(() => calculateTotals(form.getValues('items')), 100)
     }
 
-    const onSubmit = async (data: AddInvoice) => {
-        setIsSubmitLoading(true)
-        const newInvoice = await createInvoice({
+    const onSubmit = async (data: UpdateInvoice) => {
+        if (!invoice) return
+        console.log({
             ...data,
-            invoice_number: `SLNP/${format(getThisFinancialYear().from, 'yyyy')}-
-                        ${format(getThisFinancialYear().to, 'yy')}/${
-                            data.invoice_number
-                        }`,
+            bill_to_company: { set: data.bill_to_company },
+            ship_to_company: { set: data.ship_to_company },
+            invoice_number: `SLNP/${format(getThisFinancialYear().from, 'yyyy')}-${format(getThisFinancialYear().to, 'yy')}/${data.invoice_number}`,
         })
-        setIsSubmitLoading(false)
+        const newInvoice = await updateInvoice(invoice.documentId, {
+            ...data,
+            bill_to_company: { set: data.bill_to_company },
+            ship_to_company: { set: data.ship_to_company },
+            invoice_number: `SLNP/${format(getThisFinancialYear().from, 'yyyy')}-${format(getThisFinancialYear().to, 'yy')}/${data.invoice_number}`,
+        })
         if (!newInvoice) {
             toast.error('Failed to create')
             return
         }
-        toast(`Created invoice: ${newInvoice.invoice_number}`)
+        toast.success(`Updated invoice: ${newInvoice.invoice_number}`)
         form.reset()
         setBillToCompany(null)
         setShipToCompany(null)
-        setOpen(false)
+        onOpenChange(false)
         // Here you would typically send the data to your API
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger className={cn(className)} asChild={asChild}>
-                <Button {...buttonProps}>{label ?? 'Add New Invoice'}</Button>
-            </DialogTrigger>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className='max-h-[90vh] min-w-4xl overflow-y-auto'>
                 <DialogHeader>
-                    <DialogTitle>Add New Invoice</DialogTitle>
-                    <DialogDescription>
-                        Fill in the details to create a new invoice.
-                    </DialogDescription>
+                    <DialogTitle>Update Invoice</DialogTitle>
                 </DialogHeader>
 
                 <Form {...form}>
@@ -368,169 +401,157 @@ export function AddInvoiceDialog({
                         {/* Company Details */}
                         <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
                             {/* Bill To Company */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Bill To</CardTitle>
-                                    <CardDescription>
-                                        Select the billing company
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <FormField
-                                        control={control}
-                                        name='bill_to_company'
-                                        rules={{ required: 'Required' }}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Company</FormLabel>
-                                                <Select
-                                                    onValueChange={value => {
-                                                        const company =
-                                                            companies.find(
-                                                                c =>
-                                                                    c.id ===
-                                                                    Number.parseInt(
-                                                                        value
-                                                                    )
-                                                            )
-                                                        if (company) {
-                                                            form.setValue(
-                                                                'bill_to_company',
-                                                                company.id
-                                                            )
-                                                            // Recalculate tax after company change
-                                                            setBillToCompany(
-                                                                company
-                                                            )
-                                                            calculateTotals(
-                                                                form.getValues(
-                                                                    'items'
+                            <FormField
+                                control={control}
+                                name='bill_to_company'
+                                rules={{ required: 'Required' }}
+                                render={({ field }) => {
+                                    console.log(field.value)
+                                    return (
+                                        <FormItem>
+                                            <FormLabel>Bill To</FormLabel>
+                                            <Select
+                                                onValueChange={value => {
+                                                    const company =
+                                                        companies.find(
+                                                            c =>
+                                                                c.id ===
+                                                                Number.parseInt(
+                                                                    value
                                                                 )
+                                                        )
+                                                    if (company) {
+                                                        form.setValue(
+                                                            'bill_to_company',
+                                                            company.documentId
+                                                        )
+                                                        // Recalculate tax after company change
+                                                        setBillToCompany(
+                                                            company
+                                                        )
+
+                                                        calculateTotals(
+                                                            form.getValues(
+                                                                'items'
                                                             )
-                                                        }
-                                                    }}
-                                                    defaultValue={field.value?.toString()}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger className='w-full'>
-                                                            <SelectValue placeholder='Select a company' />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {companies.map(
-                                                            company => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        company.id
-                                                                    }
-                                                                    value={company.id.toString()}
-                                                                >
+                                                        )
+                                                    }
+                                                }}
+                                                defaultValue={field.value?.toString()}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className='w-full'>
+                                                        <SelectValue placeholder='Select a company' />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {companies.map(company => (
+                                                        <SelectItem
+                                                            key={company.id}
+                                                            value={company.id.toString()}
+                                                        >
+                                                            <div className='flex gap-2 items-center'>
+                                                                <div>
                                                                     {
                                                                         company.name
                                                                     }
-                                                                </SelectItem>
-                                                            )
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Input
-                                        className='mt-4'
-                                        value={billToCompany?.gst_number}
-                                        readOnly
-                                    />
-                                </CardContent>
-                            </Card>
+                                                                </div>
+                                                                <div className='text-xs'>
+                                                                    (
+                                                                    {
+                                                                        company.gst_number
+                                                                    }
+                                                                    )
+                                                                </div>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )
+                                }}
+                            />
 
                             {/* Ship To Company */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Ship To</CardTitle>
-                                    <CardDescription>
-                                        Select the shipping company
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <FormField
-                                        control={control}
-                                        name='ship_to_company'
-                                        rules={{
-                                            required: 'Required',
-                                            // validate: value => {
-                                            //     return !value || value === 0
-                                            //         ? 'Required'
-                                            //         : true
-                                            // },
-                                        }}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Company</FormLabel>
-                                                <Select
-                                                    onValueChange={value => {
-                                                        const company =
-                                                            companies.find(
-                                                                c =>
-                                                                    c.id ===
-                                                                    Number.parseInt(
-                                                                        value
-                                                                    )
-                                                            )
-                                                        if (company) {
-                                                            form.setValue(
-                                                                'ship_to_company',
-                                                                company.id
-                                                            )
-                                                            // Recalculate tax after company change
-                                                            setShipToCompany(
-                                                                company
-                                                            )
-                                                            calculateTotals(
-                                                                form.getValues(
-                                                                    'items'
+                            <FormField
+                                control={control}
+                                name='ship_to_company'
+                                rules={{
+                                    required: 'Required',
+                                    // validate: value => {
+                                    //     return !value || value === 0
+                                    //         ? 'Required'
+                                    //         : true
+                                    // },
+                                }}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Company</FormLabel>
+                                        {
+                                            <Select
+                                                onValueChange={value => {
+                                                    const company =
+                                                        companies.find(
+                                                            c =>
+                                                                c.id ===
+                                                                Number.parseInt(
+                                                                    value
                                                                 )
+                                                        )
+                                                    if (company) {
+                                                        form.setValue(
+                                                            'ship_to_company',
+                                                            company.documentId
+                                                        )
+                                                        // Recalculate tax after company change
+                                                        setShipToCompany(
+                                                            company
+                                                        )
+                                                        calculateTotals(
+                                                            form.getValues(
+                                                                'items'
                                                             )
-                                                        }
-                                                    }}
-                                                    defaultValue={field.value?.toString()}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger className='w-full'>
-                                                            <SelectValue placeholder='Select a company' />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {companies.map(
-                                                            company => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        company.id
-                                                                    }
-                                                                    value={company.id.toString()}
-                                                                >
+                                                        )
+                                                    }
+                                                }}
+                                                defaultValue={field.value?.toString()}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className='w-full'>
+                                                        <SelectValue placeholder='Select a company' />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {companies.map(company => (
+                                                        <SelectItem
+                                                            key={company.id}
+                                                            value={company.id.toString()}
+                                                        >
+                                                            <div className='flex gap-2 items-center'>
+                                                                <div>
                                                                     {
                                                                         company.name
                                                                     }
-                                                                </SelectItem>
-                                                            )
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <Input
-                                        className='mt-4'
-                                        value={shipToCompany?.gst_number}
-                                        readOnly
-                                    />
-                                </CardContent>
-                            </Card>
+                                                                </div>
+                                                                <div className='text-xs'>
+                                                                    (
+                                                                    {
+                                                                        company.gst_number
+                                                                    }
+                                                                    )
+                                                                </div>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        }
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </div>
 
                         {/* Transport Details */}
@@ -1100,7 +1121,7 @@ export function AddInvoiceDialog({
                         </Card>
 
                         <DialogFooter>
-                            <Button type='submit'>Create Invoice</Button>
+                            <Button type='submit'>Save</Button>
                         </DialogFooter>
                     </form>
                 </Form>
@@ -1109,8 +1130,8 @@ export function AddInvoiceDialog({
     )
 }
 
-type AddInvoiceItem = Omit<InvoiceItem, 'id'>
-export type AddInvoice = {
+type UpdateInvoiceItem = Omit<InvoiceItem, 'id'>
+export type UpdateInvoice = {
     invoice_number: string
     date: string
     purchase_order: string | null
@@ -1125,9 +1146,9 @@ export type AddInvoice = {
     invoice_amount: number
     eway_bill_number: string | null
     vehicle_number: string
-    bill_to_company: number
-    ship_to_company: number
-    items: AddInvoiceItem[]
+    bill_to_company: string
+    ship_to_company: string
+    items: UpdateInvoiceItem[]
 }
 const getThisFinancialYear = () => {
     const today = new Date()

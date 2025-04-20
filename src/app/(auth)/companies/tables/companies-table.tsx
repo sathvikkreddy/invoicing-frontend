@@ -32,7 +32,11 @@ const CompaniesTable = ({ companiesPromise }: CompaniesTableProps) => {
                 pageIndex: companies?.meta.pagination.page ?? 1,
                 pageSize: companies?.meta.pagination.pageSize ?? 25,
             },
-            columnVisibility: { createdAt: false },
+            columnVisibility: {
+                address2: false,
+                createdAt: false,
+                address3: false,
+            },
         },
         // Unique identifier for rows, can be used for unique row selection
         getRowId: row => row.id.toString(),

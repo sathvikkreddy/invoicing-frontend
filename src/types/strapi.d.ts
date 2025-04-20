@@ -27,7 +27,9 @@ export interface StrapiCollection {
     publishedAt: Date
 }
 
-export interface StrapiResponse<TStrapiCollection extends StrapiCollection> {
+export interface StrapiCollectionResponse<
+    TStrapiCollection extends StrapiCollection,
+> {
     data: TStrapiCollection[]
     meta: {
         pagination: {
@@ -133,8 +135,8 @@ export type AddInvoice = {
     invoice_amount: number
     eway_bill_number: string | null
     vehicle_number: string
-    bill_to_company: number
-    ship_to_company: number
+    bill_to_company: { connect?: string; disconnect?: string } | { set: string }
+    ship_to_company: { connect?: string; disconnect?: string } | { set: string }
     items: AddInvoiceItem[]
 }
 

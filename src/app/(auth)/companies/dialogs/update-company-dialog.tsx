@@ -25,6 +25,7 @@ import {
     FormMessage,
 } from '~/components/ui/form'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 interface UpdateCompanyDialogProps {
     open: boolean
@@ -78,7 +79,7 @@ export function UpdateCompanyDialog({
             console.log(company.documentId, data)
             await updateCompany(company.documentId, data)
             onOpenChange(false)
-            router.refresh()
+            toast.success('Update Company')
         } catch (error) {
             console.error('Failed to update company:', JSON.stringify(error))
         } finally {
@@ -93,10 +94,6 @@ export function UpdateCompanyDialog({
                     <form onSubmit={handleSubmit(onSubmit)}>
                         <DialogHeader>
                             <DialogTitle>Update Company</DialogTitle>
-                            <DialogDescription>
-                                Update the company details. Click save when you
-                                are done.
-                            </DialogDescription>
                         </DialogHeader>
                         <div className='flex justify-between my-2'>
                             <div className='flex flex-col gap-2'>
@@ -251,7 +248,7 @@ export function UpdateCompanyDialog({
                                         Updating...
                                     </>
                                 ) : (
-                                    'Save Changes'
+                                    'Save'
                                 )}
                             </Button>
                         </DialogFooter>

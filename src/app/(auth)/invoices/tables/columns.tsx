@@ -12,7 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
-import type { Company } from '~/types/strapi'
+import type { Company, Invoice } from '~/types/strapi'
 
 // export const companyColumns: ColumnDef<Company>[] = [
 //     {
@@ -70,53 +70,45 @@ import { Text } from 'lucide-react'
 import { DataTableColumnHeader } from '~/components/data-table/data-table-column-header'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DataTableRowAction } from '~/types/data-table'
+import { format } from 'date-fns'
+import Link from 'next/link'
 
-export function getCompaniesTableColumns({
+export function getInvoicesTableColumns({
     setRowAction,
 }: {
-    setRowAction: Dispatch<SetStateAction<DataTableRowAction<Company> | null>>
-}): ColumnDef<Company>[] {
+    setRowAction: Dispatch<SetStateAction<DataTableRowAction<Invoice> | null>>
+}): ColumnDef<Invoice>[] {
     return [
-        // {
-        //     id: 'select',
-        //     header: ({ table }) => (
-        //         <Checkbox
-        //             checked={
-        //                 table.getIsAllPageRowsSelected() ||
-        //                 (table.getIsSomePageRowsSelected() && 'indeterminate')
-        //             }
-        //             onCheckedChange={value =>
-        //                 table.toggleAllPageRowsSelected(!!value)
-        //             }
-        //             aria-label='Select all'
-        //             className='translate-y-0.5'
-        //         />
-        //     ),
-        //     cell: ({ row }) => (
-        //         <Checkbox
-        //             checked={row.getIsSelected()}
-        //             onCheckedChange={value => row.toggleSelected(!!value)}
-        //             aria-label='Select row'
-        //             className='translate-y-0.5'
-        //         />
-        //     ),
-        //     enableSorting: false,
-        //     enableHiding: false,
-        //     size: 40,
-        // },
+        {
+            id: 'date',
+            accessorKey: 'date',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title='Date' />
+            ),
+            cell: ({ row }) => (
+                <div>{format(row.original.date, 'dd-MM-yyyy')}</div>
+            ),
+            meta: {
+                label: 'Date Range',
+                placeholder: 'Search Date...',
+                variant: 'dateRange',
+                icon: Text,
+            },
+            enableColumnFilter: true,
+        },
         {
             // Provide an unique id for the column
             // This id will be used as query key for the column filter
-            id: 'name',
-            accessorKey: 'name',
+            id: 'invoice_number',
+            accessorKey: 'invoice_number',
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='Name' />
+                <DataTableColumnHeader column={column} title='Invoice No.' />
             ),
-            cell: ({ row }) => <div>{row.original.name}</div>,
+            cell: ({ row }) => <div>{row.original.invoice_number}</div>,
             // Define the column meta options for sorting, filtering, and view options
             meta: {
-                label: 'Name',
-                placeholder: 'Search Company...',
+                label: 'Invoice No.',
+                placeholder: 'Search Invoice...',
                 variant: 'text',
                 icon: Text,
             },
@@ -124,89 +116,101 @@ export function getCompaniesTableColumns({
             enableColumnFilter: true,
         },
         {
-            id: 'gst_number',
-            accessorKey: 'gst_number',
+            id: 'bill_to_company.name',
+            accessorKey: 'bill_to_company.name',
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='GST Number' />
+                <DataTableColumnHeader column={column} title='Bill to' />
             ),
-            cell: ({ row }) => <div>{row.getValue('gst_number')}</div>,
+            cell: ({ row }) => <div>{row.original.bill_to_company.name}</div>,
             meta: {
-                label: 'GST Number',
-                placeholder: 'Search GST Number...',
+                label: 'Bill to',
+                placeholder: 'Search Bill to...',
                 variant: 'text',
                 icon: Text,
             },
         },
         {
-            id: 'address1',
-            accessorKey: 'address1',
+            id: 'bill_to_company.gst_number',
+            accessorKey: 'bill_to_company.gst_number',
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='Address 1' />
-            ),
-            cell: ({ row }) => <div>{row.original.address.address_line_1}</div>,
-            meta: {
-                label: 'Address 1',
-                placeholder: 'Search Address...',
-                variant: 'text',
-                icon: Text,
-            },
-        },
-        {
-            id: 'address2',
-            accessorKey: 'address2',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='Address 2' />
-            ),
-            cell: ({ row }) => <div>{row.original.address.address_line_2}</div>,
-            meta: {
-                label: 'Address 2',
-                placeholder: 'Search Address...',
-                variant: 'text',
-                icon: Text,
-            },
-        },
-        {
-            id: 'address3',
-            accessorKey: 'address3',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='Address 3' />
-            ),
-            cell: ({ row }) => <div>{row.original.address.address_line_3}</div>,
-            meta: {
-                label: 'Address 3',
-                placeholder: 'Search Address...',
-                variant: 'text',
-                icon: Text,
-            },
-        },
-        {
-            id: 'address_state',
-            accessorKey: 'address_state',
-            header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='State' />
+                <DataTableColumnHeader column={column} title='Bill to GST' />
             ),
             cell: ({ row }) => (
-                <div>
-                    {row.original.address.state +
-                        ` (${row.original.address.state_code})`}
-                </div>
+                <div>{row.original.bill_to_company.gst_number}</div>
             ),
             meta: {
-                label: 'State',
-                placeholder: 'Search State...',
+                label: 'Bill to GST',
+                placeholder: 'Search Bill to GST...',
                 variant: 'text',
                 icon: Text,
             },
         },
         {
-            accessorKey: 'payment_terms',
+            id: 'total_quantity',
+            accessorKey: 'total_quantity',
             header: ({ column }) => (
-                <DataTableColumnHeader column={column} title='Payment Terms' />
+                <DataTableColumnHeader column={column} title='Quantity' />
             ),
-            cell: ({ row }) => <div>{row.getValue('payment_terms')}</div>,
+            cell: ({ row }) => <div>{row.original.total_quantity}</div>,
             meta: {
-                label: 'Payment Terms',
-                placeholder: 'Search Payment Terms...',
+                label: 'Quantity',
+                placeholder: 'Search Quantity...',
+                variant: 'text',
+                icon: Text,
+            },
+        },
+        {
+            id: 'cgst_amount',
+            accessorKey: 'cgst_amount',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title='CGST' />
+            ),
+            cell: ({ row }) => <div>{row.original.cgst_amount}</div>,
+            meta: {
+                label: 'CGST',
+                placeholder: 'Search CGST...',
+                variant: 'text',
+                icon: Text,
+            },
+        },
+        {
+            id: 'sgst_amount',
+            accessorKey: 'sgst_amount',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title='SGST' />
+            ),
+            cell: ({ row }) => <div>{row.original.sgst_amount}</div>,
+            meta: {
+                label: 'SGST',
+                placeholder: 'Search SGST...',
+                variant: 'text',
+                icon: Text,
+            },
+        },
+        {
+            id: 'igst_amount',
+            accessorKey: 'igst_amount',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title='IGST' />
+            ),
+            cell: ({ row }) => <div>{row.original.igst_amount}</div>,
+            meta: {
+                label: 'IGST',
+                placeholder: 'Search IGST...',
+                variant: 'text',
+                icon: Text,
+            },
+        },
+        {
+            id: 'invoice_amount',
+            accessorKey: 'invoice_amount',
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title='Amount' />
+            ),
+            cell: ({ row }) => <div>{row.original.invoice_amount}</div>,
+            meta: {
+                label: 'Amount',
+                placeholder: 'Search Amount...',
                 variant: 'text',
                 icon: Text,
             },
@@ -245,6 +249,18 @@ export function getCompaniesTableColumns({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align='end' className='w-40'>
                             <DropdownMenuItem
+                            // onSelect={() =>
+                            //     setRowAction({ row, variant: 'view' })
+                            // }
+                            >
+                                <Link
+                                    href={`/invoices/${row.original.documentId}`}
+                                    className='w-full'
+                                >
+                                    View
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                                 onSelect={() =>
                                     setRowAction({ row, variant: 'update' })
                                 }
@@ -253,6 +269,7 @@ export function getCompaniesTableColumns({
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
+                                variant='destructive'
                                 onSelect={() =>
                                     setRowAction({ row, variant: 'delete' })
                                 }

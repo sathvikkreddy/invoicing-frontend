@@ -3,6 +3,8 @@ import '~/styles/globals.css'
 import { type Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { ThemeProvider } from '~/providers/theme-provider'
+import { Toaster } from '~/components/ui/sonner'
 
 export const metadata: Metadata = {
     title: 'Create T3 App',
@@ -21,7 +23,19 @@ export default function RootLayout({
     return (
         <html lang='en' className={`${geist.variable}`}>
             <body>
-                <NuqsAdapter>{children}</NuqsAdapter>
+                <ThemeProvider
+                    attribute='class'
+                    defaultTheme='system'
+                    enableSystem
+                    disableTransitionOnChange
+                >
+                    <NuqsAdapter>{children}</NuqsAdapter>
+                    <Toaster
+                        richColors
+                        position='top-right'
+                        toastOptions={{ duration: 4000 }}
+                    />
+                </ThemeProvider>
             </body>
         </html>
     )
